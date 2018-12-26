@@ -17,6 +17,7 @@ import (
 	appdir "github.com/ProtonMail/go-appdir"
 	"github.com/cjbassi/gotop/colorschemes"
 	"github.com/cjbassi/gotop/src/logging"
+	"github.com/cjbassi/gotop/src/widgets"
 	w "github.com/cjbassi/gotop/src/widgets"
 	ui "github.com/cjbassi/termui"
 	docopt "github.com/docopt/docopt.go"
@@ -35,6 +36,7 @@ var (
 	percpuLoad   = false
 	widgetCount  = 6
 	fahrenheit   = false
+	bar          = false
 	configDir    = appdir.New("gotop").UserConfig()
 	logPath      = filepath.Join(configDir, "errors.log")
 	stderrLogger = log.New(os.Stderr, "", 0)
@@ -61,6 +63,7 @@ Options:
   -p, --percpu          Show each CPU in the CPU widget.
   -a, --averagecpu      Show average CPU in the CPU widget.
   -f, --fahrenheit      Show temperatures in fahrenheit.
+  -b, --bar             Show a statusbar with the time.
 
 Colorschemes:
   default
@@ -86,6 +89,8 @@ Colorschemes:
 	if minimal {
 		widgetCount = 3
 	}
+
+	bar, _ = args["--bar"].(bool)
 
 	rateStr, _ := args["--rate"].(string)
 	rate, err := strconv.ParseFloat(rateStr, 64)
@@ -137,22 +142,42 @@ func getCustomColorscheme(name string) (colorschemes.Colorscheme, error) {
 }
 
 func setupGrid() {
-	ui.Body.Cols = 12
-	ui.Body.Rows = 12
+	width := 12000
+	height := 12000
+
+	ui.Body.Cols = width
+	ui.Body.Rows = height
 
 	if minimal {
-		ui.Body.Set(0, 0, 12, 6, cpu)
-		ui.Body.Set(0, 6, 6, 12, mem)
-		ui.Body.Set(6, 6, 12, 12, proc)
+		ui.Body.Set(0, 0, width, height/2, cpu)
+
+		if bar {
+			ui.Body.Set(0, height/2, width/2, height-1, mem)
+			ui.Body.Set(width/2, height/2, width, height-1, proc)
+
+			bar := widgets.NewStatusbar()
+			ui.Body.Set(0, height, width, height+2, bar)
+		} else {
+			ui.Body.Set(0, height/2, width/2, height, mem)
+			ui.Body.Set(width/2, height/2, width, height, proc)
+		}
 	} else {
-		ui.Body.Set(0, 0, 12, 4, cpu)
+		ui.Body.Set(0, 0, width, height/3, cpu)
 
-		ui.Body.Set(0, 4, 4, 6, disk)
-		ui.Body.Set(0, 6, 4, 8, temp)
-		ui.Body.Set(4, 4, 12, 8, mem)
+		ui.Body.Set(0, height/3, width/3, height/2, disk)
+		ui.Body.Set(0, height/2, width/3, (width*2)/3, temp)
+		ui.Body.Set(width/3, height/3, width, (height*2)/3, mem)
 
-		ui.Body.Set(0, 8, 6, 12, net)
-		ui.Body.Set(6, 8, 12, 12, proc)
+		if bar {
+			ui.Body.Set(0, (height*2)/3, width/2, height-1, net)
+			ui.Body.Set(width/2, (height*2)/3, width, height-1, proc)
+
+			bar := widgets.NewStatusbar()
+			ui.Body.Set(0, height, width, height+2, bar)
+		} else {
+			ui.Body.Set(0, (height*2)/3, width/2, height, net)
+			ui.Body.Set(width/2, (height*2)/3, width, height, proc)
+		}
 	}
 }
 
